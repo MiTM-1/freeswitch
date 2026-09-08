@@ -9434,7 +9434,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 					switch_core_session_rwunlock(b_session);
 				}
 			} else {		/* the other channel is on a different box, we have to go find them */
-				if (exten && (br_a = switch_channel_get_partner_uuid(channel_a))) {
+				if ((br_a = switch_channel_get_partner_uuid(channel_a))) {
 					switch_core_session_t *a_session;
 					switch_channel_t *channel;
 
@@ -9444,7 +9444,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 										  "REFER from %s replaces %s (%s@%s) with %s on another server\n",
-										  switch_core_session_get_uuid(session), rep, exten, (char *) refer_to->r_url->url_host, br_a);
+										  switch_core_session_get_uuid(session), rep, switch_str_nil(exten), (char *) refer_to->r_url->url_host, br_a);
 
 						if (refer_to->r_url->url_port) {
 							port = refer_to->r_url->url_port;
@@ -9463,7 +9463,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 							switch_event_create(&xml_params, SWITCH_EVENT_REQUEST_PARAMS);
 							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "purpose", "nightmare_xfer");
 							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "profile", profile->name);
-							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "refer-to-user", refer_to->r_url->url_user);
+							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "refer-to-user", switch_str_nil(refer_to->r_url->url_user));
 							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "refer-to-host", refer_to->r_url->url_host);
 							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "refer-to-params", refer_to->r_url->url_params ? refer_to->r_url->url_params : "");
 							switch_event_add_header_string(xml_params, SWITCH_STACK_BOTTOM, "refer-to-headers", refer_to->r_url->url_headers ? refer_to->r_url->url_headers : "");
@@ -9508,9 +9508,15 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 
 
 						if (zstr(exten)) {
-							exten = switch_core_session_sprintf(session, "sofia/%s/sip:%s@%s%s%s",
-																profile->name, refer_to->r_url->url_user,
-																refer_to->r_url->url_host, port ? ":" : "", port ? port : "");
+							if (zstr(refer_to->r_url->url_user)) {
+								exten = switch_core_session_sprintf(session, "sofia/%s/sip:%s%s%s",
+																	profile->name, refer_to->r_url->url_host,
+																	port ? ":" : "", port ? port : "");
+							} else {
+								exten = switch_core_session_sprintf(session, "sofia/%s/sip:%s@%s%s%s",
+																	profile->name, refer_to->r_url->url_user,
+																	refer_to->r_url->url_host, port ? ":" : "", port ? port : "");
+							}
 						}
 
 						switch_core_new_memory_pool(&npool);
